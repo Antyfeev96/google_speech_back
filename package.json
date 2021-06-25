@@ -1,0 +1,13 @@
+{
+  "name": "socket-chat-example",
+  "version": "0.0.1",
+  "description": "my first socket.io app",
+  "dependencies": {
+    "@google-cloud/speech": "^4.5.2",
+    "express": "^4.17.1",
+    "node-record-lpcm16": "^1.0.1",
+    "socket.io": "^4.1.2",
+    "socket.io-client": "^4.1.2",
+    "socket.io-stream": "^0.9.1"
+  }
+}
