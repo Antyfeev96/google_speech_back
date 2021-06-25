@@ -4,6 +4,7 @@
   "description": "my first socket.io app",
   "dependencies": {
     "@google-cloud/speech": "^4.5.2",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "node-record-lpcm16": "^1.0.1",
     "socket.io": "^4.1.2",
