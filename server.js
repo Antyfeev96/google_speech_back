@@ -1,7 +1,7 @@
 "use strict";
 
 const encoding = "LINEAR16";
-const languageCode = "ru-RU";
+const languageCode = "en-US";
 const profanityFilter = true; // google antimat
 const sampleRateHertz = 16000;
 const enableAutomaticPunctuation = true; // 
