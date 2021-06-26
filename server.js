@@ -2,19 +2,19 @@
 
 const encoding = "LINEAR16";
 const languageCode = "ru-RU";
-const profanityFilter = true; // гугловский антимат, сука = с***, срабатывает не всегда
+const profanityFilter = true; // google antimat
 const sampleRateHertz = 16000;
-const enableAutomaticPunctuation = true; // автоматическая пунктуация, работает неплохо
-const enableWordTimeOffsets = true; // позволяет показать отдельные слова в финальной (!!!) фразе
-const streamingLimit = 290000; // длительность стрима, не уверен, что работает, стрим падает всегда через 305 секунд
-const singleUtterance = true; // дока говорит, что это нужно поставить для случая голосовой команды
+const enableAutomaticPunctuation = true; // 
+const enableWordTimeOffsets = true; // Here I can add words object after stream end
+const streamingLimit = 290000; // 
+const singleUtterance = true; //
 
 const config = {
   encoding,
   languageCode,
   profanityFilter,
   sampleRateHertz,
-  // enableAutomaticPunctuation, // с ней было бы слишком геморно
+  // enableAutomaticPunctuation, // Current logic doedswork with punctuation symbols, not critical, but sad
   enableWordTimeOffsets,
   singleUtterance,
   // streamingLimit,
@@ -22,16 +22,15 @@ const config = {
 
 const request = {
   config,
-  interimResults: true, // Опция включения промежуточного результата
+  interimResults: true,
 };
 
 const express = require('express'); // const bodyParser = require('body-parser'); // const path = require('path');
 const environmentVars = require('dotenv').config();
-// console.log(environmentVars);
 
 const speech = require('@google-cloud/speech');
 const speechClient = new speech.SpeechClient({
-  projectId: 'speech-to-text-282212',
+  projectId: 'project',
   keyFilename: './google_speech.json',
 }); // Creates a client
 
@@ -46,9 +45,9 @@ app.set('view engine', 'ejs');
 
 io.on('connection', function (client) {
 
-  let prevString = '';
-  let prevArr = [];
-  let currentArr = [];
+  let prevString = ''; //Here I save each word for compare it with the next word later
+  let prevArr = []; //Interim result can send me one result of 2 or 3 word, so I save them there in array
+  let currentArr = []; 
   let result;
 
   console.log('Client Connected to server');
@@ -63,12 +62,12 @@ io.on('connection', function (client) {
   });
 
   client.on('startGoogleCloudStream', function (data) {
-    console.log('Стрим начался');
+    console.log('Stream begin');
     startRecognitionStream(this, data);
   });
 
   client.on('endGoogleCloudStream', function (data) {
-    console.log('Стрим закончился');
+    console.log('Stream end');
     stopRecognitionStream();
   });
 
@@ -92,21 +91,23 @@ io.on('connection', function (client) {
             const [results] = data.results;
             const { isFinal, stability } = results;
 
-            const sendInterimResult = () => { // функция отправки временного результата;
+            const sendInterimResult = () => { // This function send interim result to client;
               currentArr = transcript
                 .toLowerCase()
                 .split(' ')
                 .filter((string, index) => string !== prevArr[index])
               if (currentArr.length === 0 ) return;
               prevArr = currentArr;
-              result = `Промежуточный результат: ${prevArr[prevArr.length - 1]} \n Точность: ${stability}`;
+              result = `My Interim result: ${prevArr[prevArr.length - 1]} \n Accuracy: ${stability}`;
+              // Stability is only for Interim result, its 0 for final result
               client.emit("speechData", result);
               prevString = transcript;
             }
 
             if (isFinal) {
-              sendInterimResult(); // чтобы не потяреть последнее слово
-              result = `Финальный результат: ${transcript} \n Точность: ${confidence}`;
+              sendInterimResult(); // for not to lose the last word
+              result = `My Final result: ${transcript} \n Accuracy: ${confidence}`;
+              // Confidence is only for Final result, its 0 for interim result
               client.emit("speechData", result);
               prevString = '';
               prevArr = [];
@@ -114,13 +115,13 @@ io.on('connection', function (client) {
             }
 
             if (transcript && stability > 0.8 && prevString !== transcript) {
-              // проверка на существование слова, его точности и равенство с предыдущим словом
+              // Here I filter words with good stability and remove equal word with prevString 
               if (prevArr.length === transcript.split(' ').length) return;
               sendInterimResult();
             }
 
             results.alternatives[0].words.forEach((wordInfo) => {
-              // объект words содержит нужные нам слова, но он доступен только после окончания записи, результат всегда точный
+              // object words contains 99.9% correct interim results, but it creates only after stream ending
               const startSecs =
                 `${wordInfo.startTime.seconds}` +
                 "." +
@@ -151,107 +152,6 @@ io.on('connection', function (client) {
       recognizeStream = null;
   }
 });
-
-// io.on("connection", (client) => {
-//   console.log("a user connected");
-
-//   let prevString = '';
-//   let prevArr = [];
-//   let currentArr = [];
-//   let result;
-
-//   const main = () => {
-//     const recognizeStream = client
-//       .streamingRecognize(request)
-//       .on("error", console.error)
-//       .on("data", (data) => {
-//         const resultArray = data.results[0].alternatives[0];
-//         const { transcript, confidence } = resultArray;
-//         const [results] = data.results;
-//         const { isFinal, stability } = results;
-
-//         const sendInterimResult = () => { // функция отправки временного результата;
-//           currentArr = transcript
-//             .toLowerCase()
-//             .split(' ')
-//             .filter((string, index) => string !== prevArr[index])
-//           if (currentArr.length === 0 ) return;
-//           prevArr = currentArr;
-//           result = `Промежуточный результат: ${prevArr[prevArr.length - 1]} \n Точность: ${stability}`;
-//           client.emit("textFromGoogle", result);
-//           prevString = transcript;
-//         }
-
-//         if (isFinal) {
-//           sendInterimResult(); // чтобы не потяреть последнее слово
-//           result = `Финальный результат: ${transcript} \n Точность: ${confidence}`;
-//           client.emit("textFromGoogle", result);
-//           prevString = '';
-//           prevArr = [];
-//           currentArr = [];
-//           // try { тут я пробовал остановить запись и сокет после отправления финального результата, вылезает ошибка
-//           //   recognizeStream.end();
-//           //   recorder.record().stop(); 
-//           // } catch (error) {
-//           //   console.log(error);
-//           // }
-//         }
-
-//         if (transcript && stability > 0.8 && prevString !== transcript) {
-//           // проверка на существование слова, его точности и равенство с предыдущим словом
-//           if (prevArr.length === transcript.split(' ').length) return;
-//           sendInterimResult();
-//         }
-
-//         results.alternatives[0].words.forEach((wordInfo) => {
-//           // объект words содержит нужные нам слова, но он доступен только после окончания записи, результат всегда точный
-//           const startSecs =
-//             `${wordInfo.startTime.seconds}` +
-//             "." +
-//             wordInfo.startTime.nanos / 100000000;
-//           const endSecs =
-//             `${wordInfo.endTime.seconds}` +
-//             "." +
-//             wordInfo.endTime.nanos / 100000000;
-//           const word = `Результат гугла: Word: ${wordInfo.word} ${startSecs} secs - ${endSecs} secs`;
-//           client.emit("googleWord", word);
-//         });
-//       });
-
-//     recorder
-//       .record({
-//         sampleRateHertz: sampleRateHertz,
-//         // Other options, see https://www.npmjs.com/package/node-record-lpcm16#options
-//         recordProgram: "rec", // Try also "arecord" or "sox"
-//         // endOnSilence: true, // из документации -> automatically end on silence (if supported)
-//         //, условия if supported не указаны, у меня не работает
-//         // silence: '2.0' // время в секундах, после которого запись по идее должна закончиться
-//       })
-//       .stream()
-//       .on("error", console.error)
-//       .pipe(recognizeStream);
-
-//     console.log("Listening, press Ctrl+C to stop.");
-//   };
-
-//   process.on("unhandledRejection", (err) => {
-//     console.error(err.message);
-//     process.exitCode = 1;
-//   });
-
-//   client.on("disconnect", () => {
-//     console.log("user disconnected");
-//   });
-
-//   client.on("message", (msg) => {
-//     console.log(msg);
-//   });
-
-//   client.on("startRecord", (data) => {
-//     console.log('Идёт запись...');
-//     main(...process.argv.slice(2));
-//   });
-// });
 
 server.listen(port, () => {
   console.log("listening on *:3002");
