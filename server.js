@@ -1,7 +1,7 @@
 "use strict";
 
 const encoding = "LINEAR16";
-const languageCode = "en-US";
+const languageCode = "ru-RU";
 const profanityFilter = true; // google antimat
 const sampleRateHertz = 16000;
 const enableAutomaticPunctuation = true; // 
@@ -14,7 +14,7 @@ const config = {
   languageCode,
   profanityFilter,
   sampleRateHertz,
-  // enableAutomaticPunctuation, // Current logic doedswork with punctuation symbols, not critical, but sad
+  // enableAutomaticPunctuation, // Current logic doesnt work with punctuation symbols, not critical, but sad
   enableWordTimeOffsets,
   singleUtterance,
   // streamingLimit,
@@ -115,7 +115,7 @@ io.on('connection', function (client) {
             }
 
             if (transcript && stability > 0.8 && prevString !== transcript) {
-              // Here I filter words with good stability and remove equal word with prevString 
+              // Here I filter words with good stability and remove equal word with prevString
               if (prevArr.length === transcript.split(' ').length) return;
               sendInterimResult();
             }
